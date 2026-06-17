@@ -300,21 +300,56 @@ class OverlayAccessibilityService : AccessibilityService() {
     }
 
     private fun updateBatteryIcon(percentage: Int) {
-        batteryPercentageText?.text="${percentage}%"
-        val drawableRes = when {
-            percentage <= 1  -> R.drawable.battery_001
-            percentage <= 5  -> R.drawable.battery_005
-            percentage <= 15 -> R.drawable.battery_015
-            percentage <= 25 -> R.drawable.battery_025
-            percentage <= 45 -> R.drawable.battery_045
-            percentage <= 50 -> R.drawable.battery_050
-            percentage <= 60 -> R.drawable.battery_060
-            percentage <= 70 -> R.drawable.battery_070
-            percentage <= 80 -> R.drawable.battery_080
-            percentage <= 95 -> R.drawable.battery_095
-            else             -> R.drawable.battery_100
+        batteryPercentageText?.text = "${percentage}%" //
+
+        // 1. Determine the ideal target string suffix based on your 5-step rules
+        val targetSuffix = when {
+            percentage <= 1   -> "001"
+            percentage <= 5   -> "005"
+            percentage <= 10  -> "010"
+            percentage <= 15  -> "015"
+            percentage <= 20  -> "020"
+            percentage <= 25  -> "025"
+            percentage <= 30  -> "030"
+            percentage <= 35  -> "035"
+            percentage <= 40  -> "040"
+            percentage <= 45  -> "045"
+            percentage <= 50  -> "050"
+            percentage <= 55  -> "055"
+            percentage <= 60  -> "060"
+            percentage <= 65  -> "065"
+            percentage <= 70  -> "070"
+            percentage <= 75  -> "075"
+            percentage <= 80  -> "080"
+            percentage <= 85  -> "085"
+            percentage <= 90  -> "090"
+            percentage <= 95  -> "095"
+            else              -> "100"
         }
-        batteryBaseIcon?.setImageResource(drawableRes)
+
+        var drawableResId = resources.getIdentifier("battery_$targetSuffix", "drawable", packageName)
+
+        if (drawableResId == 0) {
+            // Convert target suffix to an integer to safely math backwards
+            var fallbackStep = targetSuffix.toInt()
+
+            while (fallbackStep > 1 && drawableResId == 0) {
+                // Round down to the nearest 5-interval step
+                fallbackStep = if (fallbackStep == 100) 95 else ((fallbackStep - 1) / 5) * 5
+
+                // If we fall all the way down below 5, evaluate the 1% threshold anchor
+                val fallbackString = if (fallbackStep <= 1) "001" else String.format(Locale.US, "%03d", fallbackStep)
+                drawableResId = resources.getIdentifier("battery_$fallbackString", "drawable", packageName)
+            }
+        }
+
+        // 4. Ultimate Fallback: If absolutely zero battery assets match, default back to the layout baseline anchor
+        if (drawableResId == 0) {
+            drawableResId = R.drawable.battery_100
+        }
+
+        // 5. Update the UI asset container securely on the main canvas thread layout
+        batteryBaseIcon?.setImageResource(drawableResId) //
     }
 
     private fun monitorSignalStrength() {
